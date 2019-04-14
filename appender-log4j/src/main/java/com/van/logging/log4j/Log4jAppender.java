@@ -14,6 +14,7 @@ import org.apache.log4j.spi.Filter;
 import org.apache.log4j.spi.LoggingEvent;
 import org.apache.log4j.spi.OptionHandler;
 
+import java.io.File;
 import java.net.URL;
 import java.util.UUID;
 
@@ -101,7 +102,7 @@ public class Log4jAppender extends AppenderSkeleton
             System.out.println("close(): Cleaning up resources");
         }
         if (null != stagingLog) {
-            stagingLog.flushAndPublish();
+            stagingLog.syncFlushAndPublish();
             stagingLog = null;
         }
     }
@@ -234,6 +235,7 @@ public class Log4jAppender extends AppenderSkeleton
             initFilters();
             java.net.InetAddress addr = java.net.InetAddress.getLocalHost();
             hostName = addr.getHostName();
+
             if (null != s3) {
                 s3Client = (AmazonS3Client)buildClient(
                     s3.getAccessKey(), s3.getSecretKey(),
@@ -274,7 +276,7 @@ public class Log4jAppender extends AppenderSkeleton
                     if (verbose) {
                         System.out.println("Publishing staging log on shutdown...");
                     }
-                    stagingLog.flushAndPublish();
+                    stagingLog.syncFlushAndPublish();
                 }
             });
         }
@@ -287,7 +289,7 @@ public class Log4jAppender extends AppenderSkeleton
                 System.out.println("Registering S3 publish helper");
             }
             publisher.addHelper(new S3PublishHelper(s3Client,
-                s3.getBucket(), s3.getPath(), s3Compression));
+                s3.getBucket(), buildPath(s3.getPath(), hostName), s3Compression));
         }
         if (null != solr) {
             URL solrUrl = solr.getUrl();
@@ -332,4 +334,26 @@ public class Log4jAppender extends AppenderSkeleton
         );
         return mapped;
     }
+
+    String buildPath(String path, String hostName) {
+        final String driveHostSuffix = "-driver";
+        final String executorHostSuffix = "-exec";
+        String appId = "";
+        int index = hostName.lastIndexOf(executorHostSuffix);
+        if (index > 0) {
+            appId = hostName.substring(0, index);
+        } else {
+            index = hostName.lastIndexOf(driveHostSuffix);
+            if (index > 0) {
+                appId = hostName.substring(0, index);
+            }
+        }
+
+        if (path.endsWith("/")) {
+            return path + appId;
+        } else {
+            return path + "/" + appId;
+        }
+    }
+
 }

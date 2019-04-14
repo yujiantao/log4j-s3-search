@@ -98,7 +98,7 @@ public class S3PublishHelper implements IPublishHelper<Event> {
             if (null != outputWriter) {
                 outputWriter.close();
                 outputWriter = null;
-                // System.out.println(String.format("Publishing content of %s to S3.", tempFile));
+                System.out.println(String.format("Publishing content of %s to S3 %s.", tempFile, key));
                 ObjectMetadata metadata = new ObjectMetadata();
                 metadata.setContentLength(tempFile.length());
                 metadata.setContentType(ContentType.DEFAULT_BINARY.getMimeType());
@@ -107,8 +107,8 @@ public class S3PublishHelper implements IPublishHelper<Event> {
                 por.setMetadata(metadata);
 
                 PutObjectResult result = client.putObject(por);
-                /* System.out.println(String.format("Content MD5: %s",
-                    result.getContentMd5())); */
+                System.out.println(String.format("Content MD5: %s",
+                    result.getContentMd5()));
             }
         } catch (UnsupportedEncodingException e) {
         } catch (Exception ex) {

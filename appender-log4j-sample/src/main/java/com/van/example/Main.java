@@ -25,12 +25,13 @@ public class Main {
         Long started = System.currentTimeMillis();
         Long now = System.currentTimeMillis();
         // Loop for 3 minutes
-        while (now - started < TimeUnit.MINUTES.toMillis(3)) {
+        while (now - started < TimeUnit.SECONDS.toMillis(10)) {
             logger.info("Another round through the loop!");
             logger.warn("This is a warning!");
             logger.error("And this is an error!!!");
             // Sleep for 7 seconds before logging messages again so we don't produce too much data
-            Thread.sleep(TimeUnit.SECONDS.toMillis(7));
+            Thread.sleep(TimeUnit.SECONDS.toMillis(1));
+            now = System.currentTimeMillis();
         }
     }
 

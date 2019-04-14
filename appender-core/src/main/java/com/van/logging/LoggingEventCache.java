@@ -67,10 +67,13 @@ public class LoggingEventCache<T> implements IFlushAndPublish {
         }
 
         executorService = createExecutorService();
+
     }
 
     ExecutorService createExecutorService() {
-        return Executors.newFixedThreadPool(1);
+        //return Executors.newFixedThreadPool(1);
+        return new ThreadPoolExecutor(0, 1, 1L, TimeUnit.SECONDS,
+                new SynchronousQueue<Runnable>());
     }
 
     /**
@@ -111,56 +114,57 @@ public class LoggingEventCache<T> implements IFlushAndPublish {
     public Future<Boolean> flushAndPublish() {
         Future<Boolean> f = null;
         if (eventCount.get() > 0) {
-            f = publishCache(cacheName);
+            f = executorService.submit(this::publishCache);
         }
         return f;
     }
 
-    @SuppressWarnings("unchecked")
-    Future<Boolean> publishCache(final String name) {
-        return executorService.submit(() -> {
-            boolean success = true;
-            try {
-                Thread.currentThread().setName(PUBLISH_THREAD_NAME);
-                PublishContext context = cachePublisher.startPublish(cacheName);
+    @Override
+    public Boolean syncFlushAndPublish() {
+        return eventCount.get() <= 0 || publishCache();
+    }
 
-                int count = 0;
-                File tempFile = null;
+    private boolean publishCache() {
+        boolean success = true;
+        try {
+            Thread.currentThread().setName(PUBLISH_THREAD_NAME);
+            PublishContext context = cachePublisher.startPublish(cacheName);
 
-                synchronized (bufferLock) {
-                    objectOutputStreamRef.get().close();
+            int count = 0;
+            File tempFile = null;
 
-                    tempFile = this.tempBufferFile;
-                    count = this.eventCount.get();
-                    tempBufferFile = File.createTempFile(this.cacheName, null);
-                    /*
-                    System.out.println(
-                        String.format("Creating temporary file for event cache: %s",
-                            tempBufferFile));
-                    */
-                    this.objectOutputStreamRef.set(
+            synchronized (bufferLock) {
+                objectOutputStreamRef.get().close();
+
+                tempFile = this.tempBufferFile;
+                count = this.eventCount.get();
+                tempBufferFile = File.createTempFile(this.cacheName, null);
+                System.out.println(
+                    String.format("Creating temporary file for event cache: %s",
+                        tempBufferFile));
+                this.objectOutputStreamRef.set(
                         new ObjectOutputStream(new FileOutputStream(tempBufferFile)));
-                    this.eventCount.set(0);
-                }
-                // System.out.println(String.format("Publishing from file: %s", tempFile));
-                try (FileInputStream fis = new FileInputStream(tempFile);
-                     ObjectInputStream ois = new ObjectInputStream(fis)) {
-                    for (int i = 0; i < count; i++) {
-                        cachePublisher.publish(context, count, (T) ois.readObject());
-                    }
-                    cachePublisher.endPublish(context);
-                } finally {
-                    try {
-                        tempFile.delete();
-                    } catch (Exception ex) {
-                    }
-                }
-            } catch (Throwable t) {
-                System.err.println(String.format("Error while publishing cache: %s", t.getMessage()));
-                t.printStackTrace();
+                this.eventCount.set(0);
             }
-            return success;
-        });
+             System.out.println(String.format("Publishing from file: %s", tempFile));
+            try (FileInputStream fis = new FileInputStream(tempFile);
+                 ObjectInputStream ois = new ObjectInputStream(fis)) {
+                for (int i = 0; i < count; i++) {
+                    cachePublisher.publish(context, count, (T) ois.readObject());
+                }
+                cachePublisher.endPublish(context);
+            } finally {
+                try {
+                    tempFile.delete();
+                } catch (Exception ex) {
+                }
+            }
+        } catch (Throwable t) {
+            System.err.println(String.format("Error while publishing cache: %s", t.getMessage()));
+            t.printStackTrace();
+        }
+        return success;
+
     }
 }
 

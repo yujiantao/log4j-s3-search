@@ -17,6 +17,13 @@ public abstract class AbstractBufferMonitorTest {
             publishCount++;
             return null;
         }
+
+        @Override
+        public Boolean syncFlushAndPublish() {
+            System.out.println("syncFlushAndPublish() called.");
+            publishCount++;
+            return true;
+        }
     };
 
     @Before

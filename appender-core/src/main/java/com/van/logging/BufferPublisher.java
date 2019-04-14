@@ -43,8 +43,8 @@ public class BufferPublisher<T> implements IBufferPublisher<T> {
 
     String composeNamespacedCacheName(String rawCacheName) {
         SimpleDateFormat df = new SimpleDateFormat("yyyyMMddHHmmss");
-        return String.format("%s_%s_%s", df.format(new Date()),
-            hostName, rawCacheName);
+        return String.format("%s_%s_%s",
+            hostName, df.format(new Date()), rawCacheName);
     }
 
     public void publish(PublishContext context, int sequence, T event) {

@@ -15,4 +15,6 @@ public interface IFlushAndPublish {
      * <code>null</code> if there was nothing published.
      */
     Future<Boolean> flushAndPublish();
+
+    Boolean syncFlushAndPublish();
 }
